@@ -10,22 +10,28 @@ using nlohmann::json;
 using std::string;
 using std::vector;
 
-// Checks if the SocketIO event has JSON data.
-// If there is data the JSON object in string format will be returned,
-// else the empty string "" will be returned.
+
 string hasData(string s) {
+/* ******
+  Checks if the SocketIO event has JSON data.
+  If there is data the JSON object in string format will be returned,
+  else the empty string "" will be returned.
+******* */
+  
   auto found_null = s.find("null");
   auto b1 = s.find_first_of("[");
   auto b2 = s.find_first_of("]");
   if (found_null != string::npos) {
     return "";
-  } else if (b1 != string::npos && b2 != string::npos) {
+  }
+  else if (b1 != string::npos && b2 != string::npos) {
     return s.substr(b1, b2 - b1 + 1);
   }
   return "";
 }
 
 int main() {
+  //Create instance to connect to simulator
   uWS::Hub h;
 
   // Set up parameters here
@@ -53,53 +59,61 @@ int main() {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
+                
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
       auto s = hasData(string(data));
 
       if (s != "") {
         auto j = json::parse(s);
-
         string event = j[0].get<string>();
         
         if (event == "telemetry") {
           // j[1] is the data JSON object
-          if (!pf.initialized()) {
-            // Sense noisy position data from the simulator
-            double sense_x = std::stod(j[1]["sense_x"].get<string>());
-            double sense_y = std::stod(j[1]["sense_y"].get<string>());
+          
+          // UPDATE MOTION STATE OF PARTICLES(Vehicle's GPS positioning)
+          // Initialization
+          if (!pf.initialized()) { 
+            // Sense noisy position data from the simulator 
+            double sense_x     = std::stod(j[1]["sense_x"].get<string>());
+            double sense_y     = std::stod(j[1]["sense_y"].get<string>());
             double sense_theta = std::stod(j[1]["sense_theta"].get<string>());
 
             pf.init(sense_x, sense_y, sense_theta, sigma_pos);
-          } else {
-            // Predict the vehicle's next state from previous 
-            //   (noiseless control) data.
+          }
+          //Prediction 
+          else {
+            // Predict the vehicle's next state from previous (noiseless control) data.
             double previous_velocity = std::stod(j[1]["previous_velocity"].get<string>());
-            double previous_yawrate = std::stod(j[1]["previous_yawrate"].get<string>());
+            double previous_yawrate  = std::stod(j[1]["previous_yawrate"].get<string>());
 
             pf.prediction(delta_t, sigma_pos, previous_velocity, previous_yawrate);
           }
 
+          
+          // SENSOR OBSERVATIONS OF LANDMARKS 
+          
           // receive noisy observation data from the simulator
           // sense_observations in JSON format 
           //   [{obs_x,obs_y},{obs_x,obs_y},...{obs_x,obs_y}] 
-          vector<LandmarkObs> noisy_observations;
-          string sense_observations_x = j[1]["sense_observations_x"];
+          string sense_observations_x = j[1]["sense_observations_x"]; 
           string sense_observations_y = j[1]["sense_observations_y"];
 
+          // All x positions of landmarks from vehicle perspective in float vetor
           vector<float> x_sense;
           std::istringstream iss_x(sense_observations_x);
-
           std::copy(std::istream_iterator<float>(iss_x),
           std::istream_iterator<float>(),
           std::back_inserter(x_sense));
 
+           // All y positions of landmarks from vehicle perspective in float vetor
           vector<float> y_sense;
           std::istringstream iss_y(sense_observations_y);
-
           std::copy(std::istream_iterator<float>(iss_y),
           std::istream_iterator<float>(),
           std::back_inserter(y_sense));
 
+          // Create vector of landmarks
+          vector<LandmarkObs> noisy_observations;
           for (int i = 0; i < x_sense.size(); ++i) {
             LandmarkObs obs;
             obs.x = x_sense[i];
@@ -107,6 +121,7 @@ int main() {
             noisy_observations.push_back(obs);
           }
 
+          
           // Update the weights and resample
           pf.updateWeights(sensor_range, sigma_landmark, noisy_observations, map);
           pf.resample();
@@ -152,16 +167,19 @@ int main() {
     }  // end websocket message if
   }); // end h.onMessage
 
+  
   h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
     std::cout << "Connected!!!" << std::endl;
   });
 
+  
   h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code, 
                          char *message, size_t length) {
     ws.close();
     std::cout << "Disconnected" << std::endl;
   });
 
+  
   int port = 4567;
   if (h.listen(port)) {
     std::cout << "Listening to port " << port << std::endl;

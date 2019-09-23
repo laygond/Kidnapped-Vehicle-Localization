@@ -12,7 +12,9 @@
 # Go into the directory where this bash script is contained.
 cd `dirname $0`
 
-# Compile code.
+rm -rf build
+echo Got rid of old build!
+echo Compiling new code
 mkdir -p build
 cd build
 cmake ..
