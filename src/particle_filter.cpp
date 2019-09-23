@@ -1,12 +1,9 @@
 /**
  * particle_filter.cpp
  *
- * Created on: Dec 12, 2016
- * Author: Tiffany Huang
  */
 
 #include "particle_filter.h"
-
 #include <math.h>
 #include <algorithm>
 #include <iostream>
@@ -15,24 +12,42 @@
 #include <random>
 #include <string>
 #include <vector>
-
 #include "helper_functions.h"
 
 using std::string;
 using std::vector;
+using std::normal_distribution;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-  /**
-   * TODO: Set the number of particles. Initialize all particles to 
-   *   first position (based on estimates of x, y, theta and their uncertainties
-   *   from GPS) and all weights to 1. 
-   * TODO: Add random Gaussian noise to each particle.
-   * NOTE: Consult particle_filter.h for more information about this method 
-   *   (and others in this file).
-   */
-  num_particles = 0;  // TODO: Set the number of particles
-
+  /****************
+   * Initialization
+   ****************/
+  
+  num_particles = 100;  // Set number of particles (private field from ParticleFilter class)
+    
+  // This line creates a normal (Gaussian) distribution for x,y,theta with their corresponding std
+  normal_distribution<double> distrib_x(x, std[0]);
+  normal_distribution<double> distrib_y(y, std[1]);
+  normal_distribution<double> distrib_theta(theta, std[2]);
+  
+  //Create random particle near GPS coordinates and add them to vector of particles
+  std::default_random_engine gen;
+  for (int i = 0; i < num_particles; ++i){
+    Particle aParticle;
+    aParticle.id = i;
+    aParticle.x = distrib_x(gen);  //Add random Gaussian noise to each particle
+    aParticle.y = distrib_y(gen);
+    aParticle.theta = distrib_theta(gen);
+    aParticle.weight = 1.0;        // Set weight to 1
+    
+    particles.push_back(aParticle);
+  } 
 }
+
+    
+//     // Print your samples to the terminal.
+//     std::cout << "Sample " << i + 1 << " " << sample_x << " " << sample_y << " " 
+//               << sample_theta << std::endl;
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], 
                                 double velocity, double yaw_rate) {

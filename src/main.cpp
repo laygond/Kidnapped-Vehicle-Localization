@@ -70,10 +70,10 @@ int main() {
         if (event == "telemetry") {
           // j[1] is the data JSON object
           
-          // UPDATE MOTION STATE OF PARTICLES(Vehicle's GPS positioning)
+          // UPDATE MOTION STATE OF PARTICLES
           // Initialization
           if (!pf.initialized()) { 
-            // Sense noisy position data from the simulator 
+            // Sense noisy position data from the simulator (Create particles around Vehicle's GPS positioning)
             double sense_x     = std::stod(j[1]["sense_x"].get<string>());
             double sense_y     = std::stod(j[1]["sense_y"].get<string>());
             double sense_theta = std::stod(j[1]["sense_theta"].get<string>());
@@ -98,14 +98,14 @@ int main() {
           string sense_observations_x = j[1]["sense_observations_x"]; 
           string sense_observations_y = j[1]["sense_observations_y"];
 
-          // All x positions of landmarks from vehicle perspective in float vetor
+          // All x positions of landmarks from vehicle perspective in float vector
           vector<float> x_sense;
           std::istringstream iss_x(sense_observations_x);
           std::copy(std::istream_iterator<float>(iss_x),
           std::istream_iterator<float>(),
           std::back_inserter(x_sense));
 
-           // All y positions of landmarks from vehicle perspective in float vetor
+           // All y positions of landmarks from vehicle perspective in float vector
           vector<float> y_sense;
           std::istringstream iss_y(sense_observations_y);
           std::copy(std::istream_iterator<float>(iss_y),
@@ -145,26 +145,26 @@ int main() {
           std::cout << "highest w " << highest_weight << std::endl;
           std::cout << "average w " << weight_sum/num_particles << std::endl;
 
+          //Create json file to send back to simulator (the client)
           json msgJson;
-          msgJson["best_particle_x"] = best_particle.x;
-          msgJson["best_particle_y"] = best_particle.y;
+          msgJson["best_particle_x"]     = best_particle.x;
+          msgJson["best_particle_y"]     = best_particle.y;
           msgJson["best_particle_theta"] = best_particle.theta;
-
-          // Optional message data used for debugging particle's sensing 
-          //   and associations
           msgJson["best_particle_associations"] = pf.getAssociations(best_particle);
           msgJson["best_particle_sense_x"] = pf.getSenseCoord(best_particle, "X");
           msgJson["best_particle_sense_y"] = pf.getSenseCoord(best_particle, "Y");
-
           auto msg = "42[\"best_particle\"," + msgJson.dump() + "]";
           // std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+        
         }  // end "telemetry" if
+      
       } else {
         string msg = "42[\"manual\",{}]";
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
       }
     }  // end websocket message if
+                
   }); // end h.onMessage
 
   
