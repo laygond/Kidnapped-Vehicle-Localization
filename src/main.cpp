@@ -38,7 +38,7 @@ int main() {
   double delta_t = 0.1;  // Time elapsed between measurements [sec]
   double sensor_range = 50;  // Sensor range [m]
 
-  // GPS measurement uncertainty [x [m], y [m], theta [rad]]
+  // GPS and Movement uncertainty [x [m], y [m], theta [rad]]
   double sigma_pos [3] = {0.3, 0.3, 0.01};
   // Landmark measurement uncertainty [x [m], y [m]]
   double sigma_landmark [2] = {0.3, 0.3};
@@ -90,7 +90,7 @@ int main() {
           }
 
           
-          // SENSOR OBSERVATIONS OF LANDMARKS 
+          // SENSOR OBSERVATIONS OF LANDMARKS (from robot not particles)
           
           // receive noisy observation data from the simulator
           // sense_observations in JSON format 

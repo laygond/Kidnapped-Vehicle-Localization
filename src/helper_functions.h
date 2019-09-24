@@ -14,6 +14,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+//#include <cmath>
 #include "map.h"
 
 // for portability of M_PI (Vis Studio, MinGW, etc.)
@@ -76,6 +77,34 @@ inline double * getError(double gt_x, double gt_y, double gt_theta, double pf_x,
   }
   return error;
 }
+
+
+double multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs,
+                   double mu_x, double mu_y) {
+  /**
+ * Computes the bivariate independant gaussian distribution
+ * @param (x_obs, y_obs) are the landmarks observations in map coordinates
+ * @param (mu_x, mu_y) are the map coordinates of the nearest landmark from a particle perspective
+ * @param (sig_x, sig_y) are the uncertainties of a landmark
+ * @output probability density of observation from nearest landmark
+ */
+  
+  double gauss_norm;   //normalization term
+  gauss_norm = 1 / (2 * M_PI * sig_x * sig_y);
+  
+  double exponent;
+  exponent = (pow(x_obs - mu_x, 2) / (2 * pow(sig_x, 2)))
+               + (pow(y_obs - mu_y, 2) / (2 * pow(sig_y, 2)));
+    
+  double weight;
+  weight = gauss_norm * exp(-exponent);
+    
+  return weight;
+}
+
+
+
+
 
 /**
  * Reads map data from a file.
