@@ -79,7 +79,7 @@ inline double * getError(double gt_x, double gt_y, double gt_theta, double pf_x,
 }
 
 
-double multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs,
+inline double multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs,
                    double mu_x, double mu_y) {
   /**
  * Computes the bivariate independant gaussian distribution
