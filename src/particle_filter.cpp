@@ -105,14 +105,41 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
    */
 
   
-  for (size_t i=0; i<particles.size(); ++i){
+  for (size_t i=0; i<particles.size(); ++i){ 
     for (size_t k=0; k<observations.size(); ++k){
       
+      //Define case where no landmark is near transformed observation
+      particles[i].associations.push_back(-1);  // negative id
+      double dist_min = std::numeric_limits<const double::infinity();
+      particles[i].sense_x.push_back(dist_min);
+      particles[i].sense_y.push_back(dist_min);
+      
       // transform observation to particles perspective in map coordinates
-      x_obs_transf= particles[i].x + (cos(particles[i].theta) * observations[k].x) - (sin(particles[i].theta) * observations[k].y);
-      y_obs_map = particles[i].y + (sin(particles[i].theta) * observations[k].x) + (cos(particles[i].theta) * observations[k].y);
+      double x_obs_transf, y_obs_transf; 
+      x_obs_transf = particles[i].x + (cos(particles[i].theta) * observations[k].x) - (sin(particles[i].theta) * observations[k].y);
+      y_obs_transf = particles[i].y + (sin(particles[i].theta) * observations[k].x) + (cos(particles[i].theta) * observations[k].y);
 
+      //Find closest distance between transformed observation and landmark
+      for (size_t m=0; m<map_landmarks.size(); ++m){
+        if(dist( particles[i].x,  particles[i].y, map_landmarks[m].x_f, map_landmarks[m].y_f) < sensor_range)
+        {  
+            //Set particle to closest landmark from transformed observation
+            double dist_ml_Tobs;      //distance between a landmark and transformed observation
+            dist_ml_Tobs = dist(x_obs_transf, y_obs_transf, map_landmarks[m].x_f, map_landmarks[m].y_f);
+            if (dist_ml_Tobs<dist_min)
+            {
+              particles[i].associations[k] = map_landmarks[m].id;  
+              particles[i].sense_x[k] = map_landmarks[m].x_f;
+              particles[i].sense_y[k] = map_landmarks[m].y_f;
+              dist_min = dist_ml_Tobs;
+            }
+        }
       }
+      
+      
+      
+    }
+  }
 }
 
 void ParticleFilter::resample() {
