@@ -17,6 +17,7 @@
 using std::string;
 using std::vector;
 using std::normal_distribution;
+//Note: the vector that holds all "particles" is public to be used among all ParticleFilter methods
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
   /****************
@@ -103,6 +104,15 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
    *   (look at equation 3.33) http://planning.cs.uiuc.edu/node99.html
    */
 
+  
+  for (size_t i=0; i<particles.size(); ++i){
+    for (size_t k=0; k<observations.size(); ++k){
+      
+      // transform observation to particles perspective in map coordinates
+      x_obs_transf= particles[i].x + (cos(particles[i].theta) * observations[k].x) - (sin(particles[i].theta) * observations[k].y);
+      y_obs_map = particles[i].y + (sin(particles[i].theta) * observations[k].x) + (cos(particles[i].theta) * observations[k].y);
+
+      }
 }
 
 void ParticleFilter::resample() {

@@ -112,7 +112,7 @@ int main() {
           std::istream_iterator<float>(),
           std::back_inserter(y_sense));
 
-          // Create vector of landmarks
+          // Create vector of observed landmarks
           vector<LandmarkObs> noisy_observations;
           for (int i = 0; i < x_sense.size(); ++i) {
             LandmarkObs obs;
@@ -150,9 +150,9 @@ int main() {
           msgJson["best_particle_x"]     = best_particle.x;
           msgJson["best_particle_y"]     = best_particle.y;
           msgJson["best_particle_theta"] = best_particle.theta;
-          msgJson["best_particle_associations"] = pf.getAssociations(best_particle);
-          msgJson["best_particle_sense_x"] = pf.getSenseCoord(best_particle, "X");
-          msgJson["best_particle_sense_y"] = pf.getSenseCoord(best_particle, "Y");
+          //msgJson["best_particle_associations"] = pf.getAssociations(best_particle);
+          //msgJson["best_particle_sense_x"] = pf.getSenseCoord(best_particle, "X");
+          //msgJson["best_particle_sense_y"] = pf.getSenseCoord(best_particle, "Y");
           auto msg = "42[\"best_particle\"," + msgJson.dump() + "]";
           // std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
