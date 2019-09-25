@@ -161,7 +161,7 @@ void ParticleFilter::resample() {
    */
   
   // This line creates a weighted distribution according to the weights
-  std::discrete_distribution<int> distrib_index(weights);
+  std::discrete_distribution<int> distrib_index(weights.begin(), weights.end());
   
   //Choose a random particle from distribution to add to resampled particle vector
   std::vector<Particle> resampled_particles;
