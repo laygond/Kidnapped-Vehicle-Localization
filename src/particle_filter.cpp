@@ -103,43 +103,51 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
    *   and the following is a good resource for the actual equation to implement
    *   (look at equation 3.33) http://planning.cs.uiuc.edu/node99.html
    */
+  if (observations.size() > 0) // Only update if there are observations
+  {
+    for (size_t i=0; i<particles.size(); ++i){
+      double measurement_prob = 1.0; // declare raw weight value for a particle
 
-  
-  for (size_t i=0; i<particles.size(); ++i){ 
-    for (size_t k=0; k<observations.size(); ++k){
-      
-      //Define case where no landmark is near transformed observation
-      particles[i].associations.push_back(-1);  // negative id
-      double dist_min = std::numeric_limits<const double::infinity();
-      particles[i].sense_x.push_back(dist_min);
-      particles[i].sense_y.push_back(dist_min);
-      
-      // transform observation to particles perspective in map coordinates
-      double x_obs_transf, y_obs_transf; 
-      x_obs_transf = particles[i].x + (cos(particles[i].theta) * observations[k].x) - (sin(particles[i].theta) * observations[k].y);
-      y_obs_transf = particles[i].y + (sin(particles[i].theta) * observations[k].x) + (cos(particles[i].theta) * observations[k].y);
+      for (size_t k=0; k<observations.size(); ++k){
 
-      //Find closest distance between transformed observation and landmark
-      for (size_t m=0; m<map_landmarks.size(); ++m){
-        if(dist( particles[i].x,  particles[i].y, map_landmarks[m].x_f, map_landmarks[m].y_f) < sensor_range)
-        {  
-            //Set particle to closest landmark from transformed observation
-            double dist_ml_Tobs;      //distance between a landmark and transformed observation
-            dist_ml_Tobs = dist(x_obs_transf, y_obs_transf, map_landmarks[m].x_f, map_landmarks[m].y_f);
-            if (dist_ml_Tobs<dist_min)
-            {
-              particles[i].associations[k] = map_landmarks[m].id;  
-              particles[i].sense_x[k] = map_landmarks[m].x_f;
-              particles[i].sense_y[k] = map_landmarks[m].y_f;
-              dist_min = dist_ml_Tobs;
-            }
-        }
-      }
+        //Define case where no landmark can be associated to transformed observation
+        particles[i].associations.push_back(-1);  // negative id
+        double dist_min = std::numeric_limits<const double::infinity();
+        particles[i].sense_x.push_back(dist_min);
+        particles[i].sense_y.push_back(dist_min);
+
+        // Find closest distance between transformed observation and landmarks within sensor range
+        for (size_t m=0; m<map_landmarks.size(); ++m){
+          if(dist( particles[i].x,  particles[i].y, map_landmarks[m].x_f, map_landmarks[m].y_f) < sensor_range)
+          {
+             // transform observation to particles perspective in map coordinates
+             double x_obs_transf, y_obs_transf; 
+             x_obs_transf = particles[i].x + (cos(particles[i].theta) * observations[k].x) - (sin(particles[i].theta) * observations[k].y);
+             y_obs_transf = particles[i].y + (sin(particles[i].theta) * observations[k].x) + (cos(particles[i].theta) * observations[k].y);
+
+             // Set particle to closest landmark from transformed observation
+             double dist_ml_Tobs;      //distance between a landmark and transformed observation
+             dist_ml_Tobs = dist(x_obs_transf, y_obs_transf, map_landmarks[m].x_f, map_landmarks[m].y_f);
+             if (dist_ml_Tobs<dist_min)
+             {
+                particles[i].associations[k] = map_landmarks[m].id;  
+                particles[i].sense_x[k] = map_landmarks[m].x_f;
+                particles[i].sense_y[k] = map_landmarks[m].y_f;
+                dist_min = dist_ml_Tobs;
+             }
+          }       
+        }//end of landmark loop
+
+        // Calculate weight
+        measurement_prob *= multiv_prob(std_landmark[0], std_landmark[1], observations[k].x, observations[k].y, particles[i].sense_x[k], particles[i].sense_y[k]);
+
+      }//end of observation loop
       
+      // Set particle weight
+        particles[i].weight = measurement_prob;
       
-      
-    }
-  }
+    }//end of particle loop
+  }// end of firstif statement
 }
 
 void ParticleFilter::resample() {
@@ -149,7 +157,32 @@ void ParticleFilter::resample() {
    * NOTE: You may find std::discrete_distribution helpful here.
    *   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
    */
-
+  
+  // This line creates a normal (Gaussian) distribution for x,y,theta with their corresponding std
+  std::discrete_distribution<int> distrib_index(x, std[0]);
+  normal_distribution<double> distrib_y(y, std[1]);
+  normal_distribution<double> distrib_theta(theta, std[2]);
+  
+  //Create random particle near GPS coordinates and add them to vector of particles
+  std::default_random_engine gen;
+  for (int i = 0; i < num_particles; ++i){
+    Particle aParticle;
+    aParticle.id = i;
+    aParticle.x = distrib_x(gen);  //Add
+  
+  
+  
+p3 = []
+    index = int(random.random() * N)
+    beta = 0.0
+    mw = max(w)
+    for i in range(N):
+        beta += random.random() * 2.0 * mw
+        while beta > w[index]:
+            beta -= w[index]
+            index = (index + 1) % N
+        p3.append(p[index])
+    p = p3
 }
 
 void ParticleFilter::SetAssociations(Particle& particle, 
