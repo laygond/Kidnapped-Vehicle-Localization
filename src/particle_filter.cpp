@@ -68,8 +68,8 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
   // Calculate the Prediction Movement for each particle
   std::default_random_engine gen;
   for (int i = 0; i < num_particles; ++i){
-    particles[i].x = particles[i].x + velocity/yaw_rate *(-sin(particles[i].theta) + sin(particles[i].theta + yaw_rate*delta_t) +  distrib_move_x(gen);
-    particles[i].y = particles[i].y + velocity/yaw_rate *( cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t) +  distrib_move_y(gen);
+    particles[i].x = particles[i].x + velocity/yaw_rate *(-sin(particles[i].theta) + sin(particles[i].theta + yaw_rate*delta_t)) +  distrib_move_x(gen);
+    particles[i].y = particles[i].y + velocity/yaw_rate *( cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t)) +  distrib_move_y(gen);
     particles[i].theta = particles[i].theta + yaw_rate*delta_t +  distrib_move_theta(gen);
   }
 }
@@ -112,7 +112,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
         //Define case where no landmark can be associated to transformed observation
         particles[i].associations.push_back(-1);  // negative id
-        double dist_min = std::numeric_limits<const double::infinity();
+        double dist_min = std::numeric_limits<const double>::infinity();
         particles[i].sense_x.push_back(dist_min);
         particles[i].sense_y.push_back(dist_min);
 
