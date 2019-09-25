@@ -70,7 +70,7 @@ int main() {
         if (event == "telemetry") {
           // j[1] is the data JSON object
           
-          // UPDATE MOTION STATE OF PARTICLES
+          // ---- UPDATE MOTION STATE OF PARTICLES ----
           // Initialization
           if (!pf.initialized()) { 
             // Sense noisy position data from the simulator (Create particles around Vehicle's GPS positioning)
@@ -90,10 +90,8 @@ int main() {
           }
 
           
-          // SENSOR OBSERVATIONS OF LANDMARKS (from robot not particles)
-          
-          // receive noisy observation data from the simulator
-          // sense_observations in JSON format 
+          // ---- SENSOR OBSERVATIONS OF LANDMARKS (from robot not particles) ----
+          // receive noisy observation data from the simulator sense_observations in JSON format 
           //   [{obs_x,obs_y},{obs_x,obs_y},...{obs_x,obs_y}] 
           string sense_observations_x = j[1]["sense_observations_x"]; 
           string sense_observations_y = j[1]["sense_observations_y"];
@@ -121,27 +119,28 @@ int main() {
             noisy_observations.push_back(obs);
           }
 
-          
-          // Update the weights and resample
+          //---- ASSOCIATE OBSERVATIONS TO PARTICLES AND UPDATE PARTICLES ---
+          // Associate particles' transformed observations to landmarks, calculate weights, and resample
           pf.updateWeights(sensor_range, sigma_landmark, noisy_observations, map);
           pf.resample();
 
-          // Calculate and output the average weighted error of the particle 
-          //   filter over all time steps so far.
+          
+          //---- EVALUATE PARTICLE FILTER ----
+          //Define variables for evaluation
           vector<Particle> particles = pf.particles;
           int num_particles = particles.size();
           double highest_weight = -1.0;
           Particle best_particle;
           double weight_sum = 0.0;
+          
+          // Calculate and output the average weighted error and best particle at each iteration
           for (int i = 0; i < num_particles; ++i) {
             if (particles[i].weight > highest_weight) {
               highest_weight = particles[i].weight;
               best_particle = particles[i];
             }
-
             weight_sum += particles[i].weight;
           }
-
           std::cout << "highest w " << highest_weight << std::endl;
           std::cout << "average w " << weight_sum/num_particles << std::endl;
 
