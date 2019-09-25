@@ -89,7 +89,7 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
                                    const vector<LandmarkObs> &observations, 
-                                   const Map &map_landmarks) {
+                                   const Map &map) {
   /**
    * TODO: Update the weights of each particle using a mult-variate Gaussian 
    *   distribution. You can read more about this distribution here: 
@@ -103,8 +103,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
    *   and the following is a good resource for the actual equation to implement
    *   (look at equation 3.33) http://planning.cs.uiuc.edu/node99.html
    */
+  
   if (observations.size() > 0) // Only update if there are observations
-  {
+  { 
     for (size_t i=0; i<particles.size(); ++i){
       double measurement_prob = 1.0; // declare raw weight value for a particle
 
@@ -117,8 +118,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         particles[i].sense_y.push_back(dist_min);
 
         // Find closest distance between transformed observation and landmarks within sensor range
-        for (size_t m=0; m<map_landmarks.size(); ++m){
-          if(dist( particles[i].x,  particles[i].y, map_landmarks[m].x_f, map_landmarks[m].y_f) < sensor_range)
+        for (size_t m=0; m<map.landmark_list.size(); ++m){
+          if(dist( particles[i].x,  particles[i].y, map.landmark_list[m].x_f, map.landmark_list[m].y_f) < sensor_range)
           {
              // transform observation to particles perspective in map coordinates
              double x_obs_transf, y_obs_transf; 
@@ -127,12 +128,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
              // Set particle to closest landmark from transformed observation
              double dist_ml_Tobs;      //distance between a landmark and transformed observation
-             dist_ml_Tobs = dist(x_obs_transf, y_obs_transf, map_landmarks[m].x_f, map_landmarks[m].y_f);
+             dist_ml_Tobs = dist(x_obs_transf, y_obs_transf, map.landmark_list[m].x_f, map.landmark_list[m].y_f);
              if (dist_ml_Tobs<dist_min)
              {
-                particles[i].associations[k] = map_landmarks[m].id;  
-                particles[i].sense_x[k] = map_landmarks[m].x_f;
-                particles[i].sense_y[k] = map_landmarks[m].y_f;
+                particles[i].associations[k] = map.landmark_list[m].id_i;  
+                particles[i].sense_x[k] = map.landmark_list[m].x_f;
+                particles[i].sense_y[k] = map.landmark_list[m].y_f;
                 dist_min = dist_ml_Tobs;
              }
           }       
