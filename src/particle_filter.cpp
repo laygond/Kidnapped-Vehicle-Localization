@@ -42,7 +42,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     aParticle.weight = 1.0;        // Set weight to 1
     
     particles.push_back(aParticle);
-    //add&initilize weights(private variable) vector here?
+    weights.push_back(aParticle.weight);  //private variable from the Particle filter Class
   }
   
   //Set initialized variable as complete
@@ -145,6 +145,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       
       // Set particle weight
         particles[i].weight = measurement_prob;
+        weights[i] = measurement_prob;
       
     }//end of particle loop
   }// end of firstif statement
@@ -158,31 +159,17 @@ void ParticleFilter::resample() {
    *   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
    */
   
-  // This line creates a normal (Gaussian) distribution for x,y,theta with their corresponding std
-  std::discrete_distribution<int> distrib_index(x, std[0]);
-  normal_distribution<double> distrib_y(y, std[1]);
-  normal_distribution<double> distrib_theta(theta, std[2]);
+  // This line creates a weighted distribution according to the weights
+  std::discrete_distribution<int> distrib_index(weights);
   
-  //Create random particle near GPS coordinates and add them to vector of particles
+  //Choose a random particle from distribution to add to resampled particle vector
+  std::vector<Particle> resampled_particles;
   std::default_random_engine gen;
   for (int i = 0; i < num_particles; ++i){
-    Particle aParticle;
-    aParticle.id = i;
-    aParticle.x = distrib_x(gen);  //Add
-  
-  
-  
-p3 = []
-    index = int(random.random() * N)
-    beta = 0.0
-    mw = max(w)
-    for i in range(N):
-        beta += random.random() * 2.0 * mw
-        while beta > w[index]:
-            beta -= w[index]
-            index = (index + 1) % N
-        p3.append(p[index])
-    p = p3
+    
+    resampled_particles.push_back(particles[distrib_index(gen)]);
+  }
+  particles = resampled_particles;
 }
 
 void ParticleFilter::SetAssociations(Particle& particle, 
