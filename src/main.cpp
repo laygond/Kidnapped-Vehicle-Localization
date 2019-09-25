@@ -114,7 +114,7 @@ int main() {
 
           // Create vector of observed landmarks
           vector<LandmarkObs> noisy_observations;
-          for (int i = 0; i < x_sense.size(); ++i) {
+          for (size_t i = 0; i < x_sense.size(); ++i) {
             LandmarkObs obs;
             obs.x = x_sense[i];
             obs.y = y_sense[i];
