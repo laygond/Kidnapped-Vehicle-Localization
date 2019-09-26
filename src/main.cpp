@@ -79,14 +79,18 @@ int main() {
             double sense_theta = std::stod(j[1]["sense_theta"].get<string>());
 
             pf.init(sense_x, sense_y, sense_theta, sigma_pos);
+            std::cout<< "Initialization\n";
           }
+          
           //Prediction 
           else {
             // Predict the vehicle's next state from previous (noiseless control) data.
             double previous_velocity = std::stod(j[1]["previous_velocity"].get<string>());
             double previous_yawrate  = std::stod(j[1]["previous_yawrate"].get<string>());
-
+            
+            std::cout<< "Before Prediction\n";
             pf.prediction(delta_t, sigma_pos, previous_velocity, previous_yawrate);
+            std::cout<< "Prediction\n";
           }
 
           
@@ -118,11 +122,14 @@ int main() {
             obs.y = y_sense[i];
             noisy_observations.push_back(obs);
           }
+          std::cout<< "Observation\n";
 
           //---- ASSOCIATE OBSERVATIONS TO PARTICLES AND UPDATE PARTICLES ---
           // Associate particles' transformed observations to landmarks, calculate weights, and resample
           pf.updateWeights(sensor_range, sigma_landmark, noisy_observations, map);
+          std::cout<< "UpdateWeights\n";
           pf.resample();
+          std::cout<< "Resample\n";
 
           
           //---- EVALUATE PARTICLE FILTER ----
@@ -155,15 +162,23 @@ int main() {
           auto msg = "42[\"best_particle\"," + msgJson.dump() + "]";
           // std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          std::cout<< "Evaluation\n";
         
         }  // end "telemetry" if
       
-      } else {
-        string msg = "42[\"manual\",{}]";
-        ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+        else {
+          string msg = "42[\"manual\",{}]";
+          std::cout<< "Outside Telemetry\n";
+          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+        }      
+      }// end of string is not empty
+      else{
+        std::cout<< "String is empty\n";
       }
     }  // end websocket message if
-                
+    else{
+    std::cout<< "No 42 WebSocket Message\n";
+    }
   }); // end h.onMessage
 
   
