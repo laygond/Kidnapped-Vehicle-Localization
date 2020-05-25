@@ -4,6 +4,8 @@
  *
  * Created on: Dec 13, 2016
  * Author: Tiffany Huang
+ * Modified on :May 22, 2020
+ * by Bryan Laygond
  */
 
 #ifndef HELPER_FUNCTIONS_H_
@@ -83,8 +85,8 @@ inline double multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs
                    double mu_x, double mu_y) {
   /**
  * Computes the bivariate independant gaussian distribution
- * @param (x_obs, y_obs) are the landmarks observations in map coordinates
- * @param (mu_x, mu_y) are the map coordinates of the nearest landmark from a particle perspective
+ * @param (x_obs, y_obs) is an observation in map coordinates from a particle perspective
+ * @param (mu_x, mu_y) is the nearest landmark in map coordinates to the observation from a particle perspective
  * @param (sig_x, sig_y) are the uncertainties of a landmark
  * @output probability density of observation from nearest landmark
  */
@@ -101,9 +103,6 @@ inline double multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs
     
   return weight;
 }
-
-
-
 
 
 /**

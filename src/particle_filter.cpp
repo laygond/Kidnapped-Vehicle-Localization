@@ -67,80 +67,68 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
 
   // Calculate the Prediction Movement for each particle
   std::default_random_engine gen;
-  for (int i = 0; i < num_particles; ++i){
-    particles[i].x = particles[i].x + velocity/yaw_rate *(-sin(particles[i].theta) + sin(particles[i].theta + yaw_rate*delta_t)) +  distrib_move_x(gen);
-    particles[i].y = particles[i].y + velocity/yaw_rate *( cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t)) +  distrib_move_y(gen);
-    particles[i].theta = particles[i].theta + yaw_rate*delta_t +  distrib_move_theta(gen);
+  if (yaw_rate < 0.00001)
+  {
+    for (int i = 0; i < num_particles; ++i){
+      particles[i].x = particles[i].x + velocity/yaw_rate *(-sin(particles[i].theta) + sin(particles[i].theta + yaw_rate*delta_t)) +  distrib_move_x(gen);
+      particles[i].y = particles[i].y + velocity/yaw_rate *( cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t)) +  distrib_move_y(gen);
+      particles[i].theta = particles[i].theta + yaw_rate*delta_t +  distrib_move_theta(gen);
+    }
   }
-}
-
-void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted, 
-                                     vector<LandmarkObs>& observations) {
-  /**
-   * TODO: Find the predicted measurement that is closest to each 
-   *   observed measurement and assign the observed measurement to this 
-   *   particular landmark.
-   * NOTE: this method will NOT be called by the grading code. But you will 
-   *   probably find it useful to implement this method and use it as a helper 
-   *   during the updateWeights phase.
-   */
-
+  else{}
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
                                    const vector<LandmarkObs> &observations, 
                                    const Map &map) {
-  /**
-   * TODO: Update the weights of each particle using a mult-variate Gaussian 
-   *   distribution. You can read more about this distribution here: 
-   *   https://en.wikipedia.org/wiki/Multivariate_normal_distribution
-   * NOTE: The observations are given in the VEHICLE'S coordinate system. 
-   *   Your particles are located according to the MAP'S coordinate system. 
-   *   You will need to transform between the two systems. Keep in mind that
-   *   this transformation requires both rotation AND translation (but no scaling).
-   *   The following is a good resource for the theory:
-   *   https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
-   *   and the following is a good resource for the actual equation to implement
-   *   (look at equation 3.33) http://planning.cs.uiuc.edu/node99.html
-   */
+  /****************
+   * Update 
+   ****************/
   
   if (observations.size() > 0) // Only update if there are observations
   { 
+    // For each particle place robot's observations on the particle's reference frame
+    // then transform each particle's observation into map reference frame (this will be the x and y of gaussian)
+    // and associate closest landmark (this will be the u_x and u_y of gaussian)
+    // and calculate particle's observation weight using gaussian formula.
+    // finally calculate particle's final weight (product of all observation weights)
     for (size_t i=0; i<particles.size(); ++i){
-      double measurement_prob = 1.0; // declare raw weight value for a particle
+      double measurement_prob = 1.0; // declare raw weight value for final weight of particle
 
       for (size_t k=0; k<observations.size(); ++k){
-
-        //Define case where no landmark can be associated to transformed observation
-        particles[i].associations.push_back(-1);  // negative id
-        double dist_min = std::numeric_limits<const double>::infinity();
-        particles[i].sense_x.push_back(dist_min);
-        particles[i].sense_y.push_back(dist_min);
+        // Transform observation to particles perspective in map coordinates
+        double x_obs_transf, y_obs_transf; 
+        x_obs_transf = particles[i].x + (cos(particles[i].theta) * observations[k].x) - (sin(particles[i].theta) * observations[k].y);
+        y_obs_transf = particles[i].y + (sin(particles[i].theta) * observations[k].x) + (cos(particles[i].theta) * observations[k].y);
+        particles[i].sense_x.push_back(x_obs_transf);
+        particles[i].sense_y.push_back(y_obs_transf);
 
         // Find closest distance between transformed observation and landmarks within sensor range
+        double dist_min = std::numeric_limits<const double>::infinity(); // minimum distance of landmark to otransformed obs
+        int  closest_lm_idx; //closest landmark index
         for (size_t m=0; m<map.landmark_list.size(); ++m){
+          // if landmark within particle's sensor range
           if(dist( particles[i].x,  particles[i].y, map.landmark_list[m].x_f, map.landmark_list[m].y_f) < sensor_range)
           {
-             // transform observation to particles perspective in map coordinates
-             double x_obs_transf, y_obs_transf; 
-             x_obs_transf = particles[i].x + (cos(particles[i].theta) * observations[k].x) - (sin(particles[i].theta) * observations[k].y);
-             y_obs_transf = particles[i].y + (sin(particles[i].theta) * observations[k].x) + (cos(particles[i].theta) * observations[k].y);
-
-             // Set particle to closest landmark from transformed observation
-             double dist_ml_Tobs;      //distance between a landmark and transformed observation
-             dist_ml_Tobs = dist(x_obs_transf, y_obs_transf, map.landmark_list[m].x_f, map.landmark_list[m].y_f);
-             if (dist_ml_Tobs<dist_min)
+             // Save particle's closest landmark from transformed observation
+             double dist_lm_Tobs;      //distance between a landmark and transformed observation
+             dist_lm_Tobs = dist(x_obs_transf, y_obs_transf, map.landmark_list[m].x_f, map.landmark_list[m].y_f);
+             if (dist_lm_Tobs<dist_min)
              {
-                particles[i].associations[k] = map.landmark_list[m].id_i;  
-                particles[i].sense_x[k] = map.landmark_list[m].x_f;
-                particles[i].sense_y[k] = map.landmark_list[m].y_f;
-                dist_min = dist_ml_Tobs;
+                closest_lm_idx = m;  
+                dist_min = dist_lm_Tobs;
              }
           }       
         }//end of landmark loop
+        if (dist_min == std::numeric_limits<const double>::infinity())
+        {// then no landmark is within particle sensor range and no need to keep checking observations
+          particles[i].weight = 0;
+          break; // observation loop
+        }//else store index of closest landmark to transformed observation
+        particles[i].associations.push_back(closest_lm_idx);
 
-        // Calculate weight
-        measurement_prob *= multiv_prob(std_landmark[0], std_landmark[1], observations[k].x, observations[k].y, particles[i].sense_x[k], particles[i].sense_y[k]);
+        // Calculate observation weight and accumulate for final weight
+        measurement_prob *= multiv_prob(std_landmark[0], std_landmark[1], x_obs_transf, y_obs_transf, map.landmark_list[closest_lm_idx].x_f, map.landmark_list[closest_lm_idx].y_f);
 
       }//end of observation loop
       
@@ -149,10 +137,16 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         weights[i] = measurement_prob;
       
     }//end of particle loop
+    //RESET 
+    dist_min
   }// end of firstif statement
 }
 
+
 void ParticleFilter::resample() {
+  /****************
+   * Resample 
+   ****************/
   /**
    * TODO: Resample particles with replacement with probability proportional 
    *   to their weight. 
@@ -171,43 +165,4 @@ void ParticleFilter::resample() {
     resampled_particles.push_back(particles[distrib_index(gen)]);
   }
   particles = resampled_particles;
-}
-
-void ParticleFilter::SetAssociations(Particle& particle, 
-                                     const vector<int>& associations, 
-                                     const vector<double>& sense_x, 
-                                     const vector<double>& sense_y) {
-  // particle: the particle to which assign each listed association, 
-  //   and association's (x,y) world coordinates mapping
-  // associations: The landmark id that goes along with each listed association
-  // sense_x: the associations x mapping already converted to world coordinates
-  // sense_y: the associations y mapping already converted to world coordinates
-  particle.associations= associations;
-  particle.sense_x = sense_x;
-  particle.sense_y = sense_y;
-}
-
-string ParticleFilter::getAssociations(Particle best) {
-  vector<int> v = best.associations;
-  std::stringstream ss;
-  copy(v.begin(), v.end(), std::ostream_iterator<int>(ss, " "));
-  string s = ss.str();
-  s = s.substr(0, s.length()-1);  // get rid of the trailing space
-  return s;
-}
-
-string ParticleFilter::getSenseCoord(Particle best, string coord) {
-  vector<double> v;
-
-  if (coord == "X") {
-    v = best.sense_x;
-  } else {
-    v = best.sense_y;
-  }
-
-  std::stringstream ss;
-  copy(v.begin(), v.end(), std::ostream_iterator<float>(ss, " "));
-  string s = ss.str();
-  s = s.substr(0, s.length()-1);  // get rid of the trailing space
-  return s;
 }

@@ -56,6 +56,7 @@ int main() {
   h.onMessage([&pf,&map,&delta_t,&sensor_range,&sigma_pos,&sigma_landmark]
               (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                uWS::OpCode opCode) {
+    // Read Client (simulator) input Info to process request 
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -79,7 +80,7 @@ int main() {
             double sense_theta = std::stod(j[1]["sense_theta"].get<string>());
 
             pf.init(sense_x, sense_y, sense_theta, sigma_pos);
-            std::cout<< "Initialization\n";
+            std::cout<< "[INFO] Initialization Complete...\n";
           }
           
           //Prediction 
@@ -94,7 +95,7 @@ int main() {
           }
 
           
-          // ---- SENSOR OBSERVATIONS OF LANDMARKS (from robot not particles) ----
+          // ---- SENSOR MEASUREMENT OBSERVATIONS OF LANDMARKS (from robot not particles) ----
           // receive noisy observation data from the simulator sense_observations in JSON format 
           //   [{obs_x,obs_y},{obs_x,obs_y},...{obs_x,obs_y}] 
           string sense_observations_x = j[1]["sense_observations_x"]; 
