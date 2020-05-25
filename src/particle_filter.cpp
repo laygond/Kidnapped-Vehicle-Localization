@@ -49,10 +49,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
   is_initialized = true;
 }
 
-    
-//     // Print your samples to the terminal.
-//     std::cout << "Sample " << i + 1 << " " << sample_x << " " << sample_y << " " 
-//               << sample_theta << std::endl;
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], 
                                 double velocity, double yaw_rate) {
@@ -67,16 +63,22 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
 
   // Calculate the Prediction Movement for each particle
   std::default_random_engine gen;
-  if (yaw_rate < 0.00001)
-  {
+  if (fabs(yaw_rate) < 0.00001){// Apply L'Hopital Rule to prevent it from blowing up
+    for (int i = 0; i < num_particles; ++i){
+      particles[i].x = particles[i].x + velocity * delta_t * cos(particles[i].theta) + distrib_move_x(gen);
+      particles[i].y = particles[i].y + velocity * delta_t * sin(particles[i].theta) + distrib_move_y(gen);
+      particles[i].theta = particles[i].theta + distrib_move_theta(gen);
+    }  
+  }
+  else{
     for (int i = 0; i < num_particles; ++i){
       particles[i].x = particles[i].x + velocity/yaw_rate *(-sin(particles[i].theta) + sin(particles[i].theta + yaw_rate*delta_t)) +  distrib_move_x(gen);
       particles[i].y = particles[i].y + velocity/yaw_rate *( cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t)) +  distrib_move_y(gen);
       particles[i].theta = particles[i].theta + yaw_rate*delta_t +  distrib_move_theta(gen);
     }
   }
-  else{}
 }
+
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
                                    const vector<LandmarkObs> &observations, 
@@ -93,16 +95,15 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     // and calculate particle's observation weight using gaussian formula.
     // finally calculate particle's final weight (product of all observation weights)
     for (size_t i=0; i<particles.size(); ++i){
-      double measurement_prob = 1.0; // declare raw weight value for final weight of particle
+      
+      double final_weight = 1.0; // initialize value for final weight of particle
 
       for (size_t k=0; k<observations.size(); ++k){
         // Transform observation to particles perspective in map coordinates
         double x_obs_transf, y_obs_transf; 
         x_obs_transf = particles[i].x + (cos(particles[i].theta) * observations[k].x) - (sin(particles[i].theta) * observations[k].y);
         y_obs_transf = particles[i].y + (sin(particles[i].theta) * observations[k].x) + (cos(particles[i].theta) * observations[k].y);
-        particles[i].sense_x.push_back(x_obs_transf);
-        particles[i].sense_y.push_back(y_obs_transf);
-
+        
         // Find closest distance between transformed observation and landmarks within sensor range
         double dist_min = std::numeric_limits<const double>::infinity(); // minimum distance of landmark to otransformed obs
         int  closest_lm_idx; //closest landmark index
@@ -110,7 +111,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
           // if landmark within particle's sensor range
           if(dist( particles[i].x,  particles[i].y, map.landmark_list[m].x_f, map.landmark_list[m].y_f) < sensor_range)
           {
-             // Save particle's closest landmark from transformed observation
+             // Save closest landmark to particle's transformed observation
              double dist_lm_Tobs;      //distance between a landmark and transformed observation
              dist_lm_Tobs = dist(x_obs_transf, y_obs_transf, map.landmark_list[m].x_f, map.landmark_list[m].y_f);
              if (dist_lm_Tobs<dist_min)
@@ -120,25 +121,23 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
              }
           }       
         }//end of landmark loop
+        
+        // Check before continuing... 
         if (dist_min == std::numeric_limits<const double>::infinity())
         {// then no landmark is within particle sensor range and no need to keep checking observations
-          particles[i].weight = 0;
+          final_weight = 0.000000001; //zero
           break; // observation loop
-        }//else store index of closest landmark to transformed observation
-        particles[i].associations.push_back(closest_lm_idx);
+        }
 
         // Calculate observation weight and accumulate for final weight
-        measurement_prob *= multiv_prob(std_landmark[0], std_landmark[1], x_obs_transf, y_obs_transf, map.landmark_list[closest_lm_idx].x_f, map.landmark_list[closest_lm_idx].y_f);
-
+        final_weight *= multiv_prob(std_landmark[0], std_landmark[1], x_obs_transf, y_obs_transf, map.landmark_list[closest_lm_idx].x_f, map.landmark_list[closest_lm_idx].y_f);
       }//end of observation loop
       
       // Set particle weight
-        particles[i].weight = measurement_prob;
-        weights[i] = measurement_prob;
-      
+      particles[i].weight = final_weight;
+      weights[i] = final_weight;
+    
     }//end of particle loop
-    //RESET 
-    dist_min
   }// end of firstif statement
 }
 
