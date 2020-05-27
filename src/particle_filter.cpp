@@ -36,9 +36,9 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
   for (int i = 0; i < num_particles; ++i){
     Particle aParticle;
     aParticle.id = i;
-    aParticle.x = distrib_x(gen);  //Add random Gaussian noise to each particle
-    aParticle.y = distrib_y(gen);
-    aParticle.theta = distrib_theta(gen);
+    aParticle.x  = distrib_x(gen);  //Add random Gaussian noise to each particle
+    aParticle.y  = distrib_y(gen);
+    aParticle.theta  = distrib_theta(gen);
     aParticle.weight = 1.0;        // Set weight to 1
     
     particles.push_back(aParticle);
@@ -63,14 +63,15 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
 
   // Calculate the Prediction Movement for each particle
   std::default_random_engine gen;
-  if (fabs(yaw_rate) < 0.00001){// Apply L'Hopital Rule to prevent it from blowing up
+  if (fabs(yaw_rate) < 0.00001){
+    // Go straight only  (Applying L'Hopital Rule to prevent it from blowing up)
     for (int i = 0; i < num_particles; ++i){
       particles[i].x = particles[i].x + velocity * delta_t * cos(particles[i].theta) + distrib_move_x(gen);
       particles[i].y = particles[i].y + velocity * delta_t * sin(particles[i].theta) + distrib_move_y(gen);
       particles[i].theta = particles[i].theta + distrib_move_theta(gen);
     }  
   }
-  else{
+  else{ // Move while turning
     for (int i = 0; i < num_particles; ++i){
       particles[i].x = particles[i].x + velocity/yaw_rate *(-sin(particles[i].theta) + sin(particles[i].theta + yaw_rate*delta_t)) +  distrib_move_x(gen);
       particles[i].y = particles[i].y + velocity/yaw_rate *( cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t)) +  distrib_move_y(gen);
@@ -86,19 +87,21 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
   /****************
    * Update 
    ****************/
-  
+ 
+  // For each particle place robot's observations on the particle's reference frame
+  // then transform each particle's observation into map reference frame (this will be the x and y of gaussian)
+  // and associate closest landmark (this will be the u_x and u_y of gaussian)
+  // and calculate particle's observation weight using gaussian formula.
+  // finally calculate particle's final weight (product of all observation weights)
+
   if (observations.size() > 0) // Only update if there are observations
   { 
-    // For each particle place robot's observations on the particle's reference frame
-    // then transform each particle's observation into map reference frame (this will be the x and y of gaussian)
-    // and associate closest landmark (this will be the u_x and u_y of gaussian)
-    // and calculate particle's observation weight using gaussian formula.
-    // finally calculate particle's final weight (product of all observation weights)
     for (size_t i=0; i<particles.size(); ++i){
       
       double final_weight = 1.0; // initialize value for final weight of particle
 
       for (size_t k=0; k<observations.size(); ++k){
+        
         // Transform observation to particles perspective in map coordinates
         double x_obs_transf, y_obs_transf; 
         x_obs_transf = particles[i].x + (cos(particles[i].theta) * observations[k].x) - (sin(particles[i].theta) * observations[k].y);
@@ -126,6 +129,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         if (dist_min == std::numeric_limits<const double>::infinity())
         {// then no landmark is within particle sensor range and no need to keep checking observations
           final_weight = 0.000000001; //zero
+          // std::cout<< "[INFO] No landmarks within sensor range\n"; 
           break; // observation loop
         }
 
@@ -153,10 +157,10 @@ void ParticleFilter::resample() {
    *   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
    */
   
-  // This line creates a weighted distribution according to the weights
+  // This line creates a weighted distribution of the indeces according to the weights
   std::discrete_distribution<int> distrib_index(weights.begin(), weights.end());
   
-  //Choose a random particle from distribution to add to resampled particle vector
+  //Choose a random index from distribution to add to resampled particle vector
   std::vector<Particle> resampled_particles;
   std::default_random_engine gen;
   for (int i = 0; i < num_particles; ++i){

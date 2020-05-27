@@ -38,7 +38,7 @@ int main() {
   double delta_t = 0.1;  // Time elapsed between measurements [sec]
   double sensor_range = 50;  // Sensor range [m]
 
-  // GPS and Movement uncertainty [x [m], y [m], theta [rad]]
+  // GPS and Motion uncertainty [x [m], y [m], theta [rad]]
   double sigma_pos [3] = {0.3, 0.3, 0.01};
   // Landmark measurement uncertainty [x [m], y [m]]
   double sigma_landmark [2] = {0.3, 0.3};
@@ -68,35 +68,40 @@ int main() {
         auto j = json::parse(s);
         string event = j[0].get<string>();
         
-        if (event == "telemetry") {
-          // j[1] is the data JSON object
+        if (event == "telemetry") { // j[1] is the data JSON object
           
-          // ---- UPDATE MOTION STATE OF PARTICLES ----
-          // Initialization
-          if (!pf.initialized()) { 
+          /****************
+           * Initialization
+           ****************/
+          if (!pf.initialized()) {
+            std::cout<< "[INFO] Initializing Particles...\n"; 
             // Sense noisy position data from the simulator (Create particles around Vehicle's GPS positioning)
             double sense_x     = std::stod(j[1]["sense_x"].get<string>());
             double sense_y     = std::stod(j[1]["sense_y"].get<string>());
             double sense_theta = std::stod(j[1]["sense_theta"].get<string>());
 
             pf.init(sense_x, sense_y, sense_theta, sigma_pos);
-            std::cout<< "[INFO] Initialization Complete...\n";
           }
-          
-          //Prediction 
+
+
+          /****************
+           * Prediction 
+           ****************/
           else {
+            std::cout<< "[INFO] Predicting Motion Model...\n";
             // Predict the vehicle's next state from previous (noiseless control) data.
             double previous_velocity = std::stod(j[1]["previous_velocity"].get<string>());
             double previous_yawrate  = std::stod(j[1]["previous_yawrate"].get<string>());
             
-            std::cout<< "Before Prediction\n";
             pf.prediction(delta_t, sigma_pos, previous_velocity, previous_yawrate);
-            std::cout<< "Prediction\n";
           }
 
           
-          // ---- SENSOR MEASUREMENT OBSERVATIONS OF LANDMARKS (from robot not particles) ----
-          // receive noisy observation data from the simulator sense_observations in JSON format 
+          /****************
+           * Update 
+           ****************/
+          std::cout<< "[INFO] Reading robot's sensor measurement observations...\n";
+          // receive the robot's noisy observation data from the simulator sense_observations in JSON format 
           //   [{obs_x,obs_y},{obs_x,obs_y},...{obs_x,obs_y}] 
           string sense_observations_x = j[1]["sense_observations_x"]; 
           string sense_observations_y = j[1]["sense_observations_y"];
@@ -123,17 +128,27 @@ int main() {
             obs.y = y_sense[i];
             noisy_observations.push_back(obs);
           }
-          std::cout<< "Observation\n";
-
-          //---- ASSOCIATE OBSERVATIONS TO PARTICLES AND UPDATE PARTICLES ---
-          // Associate particles' transformed observations to landmarks, calculate weights, and resample
+          // |Transform observations
+          // |Associate particles' transformed observations to landmarks,
+          // |Calculate weights
+          std::cout<< "[INFO] Updating Weights...\n";
           pf.updateWeights(sensor_range, sigma_landmark, noisy_observations, map);
-          std::cout<< "UpdateWeights\n";
-          pf.resample();
-          std::cout<< "Resample\n";
-
           
-          //---- EVALUATE PARTICLE FILTER ----
+
+
+          /****************
+           * Resample 
+           ****************/
+          std::cout<< "[INFO] Resampling...\n";
+          pf.resample();
+          
+
+
+          /****************
+           * Evaluation 
+           ****************/
+          std::cout<< "[INFO] Particle Filter Evaluation...\n";
+
           //Define variables for evaluation
           vector<Particle> particles = pf.particles;
           int num_particles = particles.size();
@@ -149,38 +164,28 @@ int main() {
             }
             weight_sum += particles[i].weight;
           }
-          std::cout << "highest w " << highest_weight << std::endl;
-          std::cout << "average w " << weight_sum/num_particles << std::endl;
+          std::cout << "[INFO] highest w " << highest_weight << std::endl;
+          std::cout << "[INFO] average w " << weight_sum/num_particles << std::endl;
 
-          //Create json file to send back to simulator (the client)
+          //Create json file to send back to simulator (the client) the best particle
           json msgJson;
           msgJson["best_particle_x"]     = best_particle.x;
           msgJson["best_particle_y"]     = best_particle.y;
           msgJson["best_particle_theta"] = best_particle.theta;
-          //msgJson["best_particle_associations"] = pf.getAssociations(best_particle);
-          //msgJson["best_particle_sense_x"] = pf.getSenseCoord(best_particle, "X");
-          //msgJson["best_particle_sense_y"] = pf.getSenseCoord(best_particle, "Y");
           auto msg = "42[\"best_particle\"," + msgJson.dump() + "]";
-          // std::cout << msg << std::endl;
+          std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-          std::cout<< "Evaluation\n";
         
-        }  // end "telemetry" if
-      
-        else {
-          string msg = "42[\"manual\",{}]";
-          std::cout<< "Outside Telemetry\n";
-          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-        }      
-      }// end of string is not empty
+        }// end "telemetry" if
+
+      }// end "s is not empty" if
       else{
-        std::cout<< "String is empty\n";
+        // Wait until simulator "Start" (send empty message meanwhile to keep Connection)
+        string msg = "42[\"manual\",{}]";
+        ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
       }
-    }  // end websocket message if
-    else{
-    std::cout<< "No 42 WebSocket Message\n";
-    }
-  }); // end h.onMessage
+    }// end websocket message if
+  });// end h.onMessage
 
   
   h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
