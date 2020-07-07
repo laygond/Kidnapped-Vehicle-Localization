@@ -60,16 +60,20 @@ int main() {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
-                
+    std::cout << "[INFO] Inside h" << std::endl;            
+
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
       auto s = hasData(string(data));
+      std::cout << "[INFO] Inside message 42" << std::endl;
 
       if (s != "") {
         auto j = json::parse(s);
         string event = j[0].get<string>();
-        
+        std::cout << "[INFO] Inside Message not empty" << std::endl;
+
         if (event == "telemetry") { // j[1] is the data JSON object
-          
+          std::cout << "[INFO] Inside Telemetry" << std::endl;
+
           /****************
            * Initialization
            ****************/
@@ -176,6 +180,7 @@ int main() {
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         
+          std::cout << "[INFO] Out of Telemetry" << std::endl;
         }// end "telemetry" if
 
       }// end "s is not empty" if
@@ -183,8 +188,10 @@ int main() {
         // Wait until simulator "Start" (send empty message meanwhile to keep Connection)
         string msg = "42[\"manual\",{}]";
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+        std::cout << "[INFO] send something if s is empty" << std::endl;
       }
     }// end websocket message if
+    std::cout << "[INFO] Out of 42" << std::endl;
   });// end h.onMessage
 
   

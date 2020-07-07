@@ -80,17 +80,16 @@ inline double * getError(double gt_x, double gt_y, double gt_theta, double pf_x,
   return error;
 }
 
-
-inline double multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs,
-                   double mu_x, double mu_y) {
-  /**
+ /**
  * Computes the bivariate independant gaussian distribution
  * @param (x_obs, y_obs) is an observation in map coordinates from a particle perspective
  * @param (mu_x, mu_y) is the nearest landmark in map coordinates to the observation from a particle perspective
  * @param (sig_x, sig_y) are the uncertainties of a landmark
  * @output probability density of observation from nearest landmark
  */
-  
+inline double multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs,
+                   double mu_x, double mu_y) {
+   
   double gauss_norm;   //normalization term
   gauss_norm = 1 / (2 * M_PI * sig_x * sig_y);
   
@@ -103,7 +102,6 @@ inline double multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs
     
   return weight;
 }
-
 
 /**
  * Reads map data from a file.
