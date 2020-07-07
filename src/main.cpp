@@ -10,21 +10,18 @@ using nlohmann::json;
 using std::string;
 using std::vector;
 
-
+/**
+ * Checks if the SocketIO event has JSON data.
+ * If there is data the JSON object in string format will be returned,
+ * else the empty string "" will be returned.
+ */
 string hasData(string s) {
-/* ******
-  Checks if the SocketIO event has JSON data.
-  If there is data the JSON object in string format will be returned,
-  else the empty string "" will be returned.
-******* */
-  
   auto found_null = s.find("null");
   auto b1 = s.find_first_of("[");
   auto b2 = s.find_first_of("]");
   if (found_null != string::npos) {
     return "";
-  }
-  else if (b1 != string::npos && b2 != string::npos) {
+  } else if (b1 != string::npos && b2 != string::npos) {
     return s.substr(b1, b2 - b1 + 1);
   }
   return "";
@@ -38,7 +35,7 @@ int main() {
   double delta_t = 0.1;  // Time elapsed between measurements [sec]
   double sensor_range = 50;  // Sensor range [m]
 
-  // GPS and Motion uncertainty [x [m], y [m], theta [rad]]
+  // GPS measurement uncertainty [x [m], y [m], theta [rad]]
   double sigma_pos [3] = {0.3, 0.3, 0.01};
   // Landmark measurement uncertainty [x [m], y [m]]
   double sigma_landmark [2] = {0.3, 0.3};
@@ -60,51 +57,43 @@ int main() {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
-    std::cout << "[INFO] Inside h" << std::endl;            
-
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
       auto s = hasData(string(data));
-      std::cout << "[INFO] Inside message 42" << std::endl;
 
       if (s != "") {
         auto j = json::parse(s);
         string event = j[0].get<string>();
-        std::cout << "[INFO] Inside Message not empty" << std::endl;
-
-        if (event == "telemetry") { // j[1] is the data JSON object
-          std::cout << "[INFO] Inside Telemetry" << std::endl;
-
+        
+        if (event == "telemetry") {// j[1] is the data JSON object
+          
           /****************
            * Initialization
            ****************/
           if (!pf.initialized()) {
-            std::cout<< "[INFO] Initializing Particles...\n"; 
-            // Sense noisy position data from the simulator (Create particles around Vehicle's GPS positioning)
-            double sense_x     = std::stod(j[1]["sense_x"].get<string>());
-            double sense_y     = std::stod(j[1]["sense_y"].get<string>());
+            // Sense noisy position data from the simulator
+            double sense_x = std::stod(j[1]["sense_x"].get<string>());
+            double sense_y = std::stod(j[1]["sense_y"].get<string>());
             double sense_theta = std::stod(j[1]["sense_theta"].get<string>());
 
             pf.init(sense_x, sense_y, sense_theta, sigma_pos);
-          }
+          } 
 
 
           /****************
            * Prediction 
            ****************/
           else {
-            std::cout<< "[INFO] Predicting Motion Model...\n";
             // Predict the vehicle's next state from previous (noiseless control) data.
             double previous_velocity = std::stod(j[1]["previous_velocity"].get<string>());
-            double previous_yawrate  = std::stod(j[1]["previous_yawrate"].get<string>());
-            
+            double previous_yawrate = std::stod(j[1]["previous_yawrate"].get<string>());
+
             pf.prediction(delta_t, sigma_pos, previous_velocity, previous_yawrate);
           }
 
-          
+
           /****************
            * Update 
            ****************/
-          std::cout<< "[INFO] Reading robot's sensor measurement observations...\n";
           // receive the robot's noisy observation data from the simulator sense_observations in JSON format 
           //   [{obs_x,obs_y},{obs_x,obs_y},...{obs_x,obs_y}] 
           string sense_observations_x = j[1]["sense_observations_x"]; 
@@ -135,78 +124,71 @@ int main() {
           // |Transform observations
           // |Associate particles' transformed observations to landmarks,
           // |Calculate weights
-          std::cout<< "[INFO] Updating Weights...\n";
           pf.updateWeights(sensor_range, sigma_landmark, noisy_observations, map);
           
-
 
           /****************
            * Resample 
            ****************/
-          std::cout<< "[INFO] Resampling...\n";
           pf.resample();
           
-
 
           /****************
            * Evaluation 
            ****************/
-          std::cout<< "[INFO] Particle Filter Evaluation...\n";
-
           //Define variables for evaluation
           vector<Particle> particles = pf.particles;
           int num_particles = particles.size();
           double highest_weight = -1.0;
           Particle best_particle;
           double weight_sum = 0.0;
-          
+
           // Calculate and output the average weighted error and best particle at each iteration
           for (int i = 0; i < num_particles; ++i) {
             if (particles[i].weight > highest_weight) {
               highest_weight = particles[i].weight;
               best_particle = particles[i];
             }
+
             weight_sum += particles[i].weight;
           }
-          std::cout << "[INFO] highest w " << highest_weight << std::endl;
-          std::cout << "[INFO] average w " << weight_sum/num_particles << std::endl;
+          std::cout << "highest w " << highest_weight << std::endl;
+          std::cout << "average w " << weight_sum/num_particles << std::endl;
 
           //Create json file to send back to simulator (the client) the best particle
           json msgJson;
-          msgJson["best_particle_x"]     = best_particle.x;
-          msgJson["best_particle_y"]     = best_particle.y;
+          msgJson["best_particle_x"] = best_particle.x;
+          msgJson["best_particle_y"] = best_particle.y;
           msgJson["best_particle_theta"] = best_particle.theta;
-          auto msg = "42[\"best_particle\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
-          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-        
-          std::cout << "[INFO] Out of Telemetry" << std::endl;
-        }// end "telemetry" if
+          msgJson["best_particle_associations"] = pf.getAssociations(best_particle);//optional
+          msgJson["best_particle_sense_x"] = pf.getSenseCoord(best_particle, "X");  //optional
+          msgJson["best_particle_sense_y"] = pf.getSenseCoord(best_particle, "Y");  //optional
 
-      }// end "s is not empty" if
-      else{
-        // Wait until simulator "Start" (send empty message meanwhile to keep Connection)
+          auto msg = "42[\"best_particle\"," + msgJson.dump() + "]";
+          // std::cout << msg << std::endl;
+          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+        }  // end "telemetry" if
+      } 
+      else {
         string msg = "42[\"manual\",{}]";
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-        std::cout << "[INFO] send something if s is empty" << std::endl;
       }
-    }// end websocket message if
-    std::cout << "[INFO] Out of 42" << std::endl;
-  });// end h.onMessage
+    }  // end websocket message if
+  }); // end h.onMessage
 
-  
+
   h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
     std::cout << "Connected!!!" << std::endl;
   });
 
-  
+
   h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code, 
                          char *message, size_t length) {
     ws.close();
     std::cout << "Disconnected" << std::endl;
   });
 
-  
+
   int port = 4567;
   if (h.listen(port)) {
     std::cout << "Listening to port " << port << std::endl;

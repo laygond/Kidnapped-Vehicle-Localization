@@ -1,8 +1,3 @@
-/**
- * particle_filter.cpp
- *
- */
-
 #include "particle_filter.h"
 #include <math.h>
 #include <algorithm>
@@ -17,7 +12,8 @@
 using std::string;
 using std::vector;
 using std::normal_distribution;
-//Note: the vector that holds all "particles" is public to be used among all ParticleFilter methods
+//Note: the vector that holds all "particles" is public to be used outside ParticleFilter class
+
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
   /****************
@@ -48,7 +44,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
   //Set initialized variable as complete
   is_initialized = true;
 }
-
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], 
                                 double velocity, double yaw_rate) {
@@ -98,7 +93,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
   { 
     for (size_t i=0; i<particles.size(); ++i){
       
-      double final_weight = 1.0; // initialize value for final weight of particle
+      double final_weight = 1.0;      // initialize value for final weight of particle
+      //particles[i].sense_x.clear();   // clear previous particle's (x,y) observation and associated landmark id
+      //particles[i].sense_y.clear();
+      //particles[i].associations.clear();
 
       for (size_t k=0; k<observations.size(); ++k){
         
@@ -108,7 +106,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         y_obs_transf = particles[i].y + (sin(particles[i].theta) * observations[k].x) + (cos(particles[i].theta) * observations[k].y);
         
         // Find closest distance between transformed observation and landmarks within sensor range
-        double dist_min = std::numeric_limits<const double>::infinity(); // minimum distance of landmark to otransformed obs
+        double dist_min = std::numeric_limits<const double>::infinity(); // minimum distance of landmark to transformed obs
         int  closest_lm_idx; //closest landmark index
         for (size_t m=0; m<map.landmark_list.size(); ++m){
           // if landmark within particle's sensor range
@@ -129,9 +127,14 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         if (dist_min == std::numeric_limits<const double>::infinity())
         {// then no landmark is within particle sensor range and no need to keep checking observations
           final_weight = 0.000000001; //zero
-          // std::cout<< "[INFO] No landmarks within sensor range\n"; 
+          std::cout<< "[INFO] No landmarks within sensor range\n"; 
           break; // observation loop
         }
+
+        // Set particle's (x,y) observation and associated landmark id
+        //particles[i].sense_x.push_back(x_obs_transf);
+        //particles[i].sense_y.push_back(y_obs_transf);
+        //particles[i].associations.push_back(closest_lm_idx);
 
         // Calculate observation weight and accumulate for final weight
         final_weight *= multiv_prob(std_landmark[0], std_landmark[1], x_obs_transf, y_obs_transf, map.landmark_list[closest_lm_idx].x_f, map.landmark_list[closest_lm_idx].y_f);
@@ -150,12 +153,11 @@ void ParticleFilter::resample() {
   /****************
    * Resample 
    ****************/
-  /**
-   * TODO: Resample particles with replacement with probability proportional 
-   *   to their weight. 
-   * NOTE: You may find std::discrete_distribution helpful here.
-   *   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-   */
+  
+  // Resample particles with replacement with probability proportional 
+  // to their weight. You may find std::discrete_distribution helpful here.
+  // http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+   
   
   // This line creates a weighted distribution of the indeces according to the weights
   std::discrete_distribution<int> distrib_index(weights.begin(), weights.end());
@@ -168,4 +170,31 @@ void ParticleFilter::resample() {
     resampled_particles.push_back(particles[distrib_index(gen)]);
   }
   particles = resampled_particles;
+}
+
+
+// Extra for Debugging
+string ParticleFilter::getAssociations(Particle best) {
+  vector<int> v = best.associations;
+  std::stringstream ss;
+  copy(v.begin(), v.end(), std::ostream_iterator<int>(ss, " "));
+  string s = ss.str();
+  s = s.substr(0, s.length()-1);  // get rid of the trailing space
+  return s;
+}
+// Extra for Debugging
+string ParticleFilter::getSenseCoord(Particle best, string coord) {
+  vector<double> v;
+
+  if (coord == "X") {
+    v = best.sense_x;
+  } else {
+    v = best.sense_y;
+  }
+
+  std::stringstream ss;
+  copy(v.begin(), v.end(), std::ostream_iterator<float>(ss, " "));
+  string s = ss.str();
+  s = s.substr(0, s.length()-1);  // get rid of the trailing space
+  return s;
 }
